@@ -1,0 +1,17 @@
+import torch
+import numpy as np
+
+f = open('words.txt')
+lines = f.readlines()
+f.close()
+words = []
+frequencies = []
+alphabet = set()
+for l in lines:
+    w,f = l.split(' ')
+    words.append(w)
+    frequencies.append(int(f))
+    alphabet = alphabet.union(set(w))
+alphabet = list(alphabet)
+alphabet.sort()
+print(alphabet)
