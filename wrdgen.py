@@ -79,13 +79,19 @@ optimizer = torch.optim.Adam(model.parameters(),lr = 0.001)
 permutation = np.random.permutation(len(words))
 
 start_time = time.time()
+loss_mean = 0
 for i in range(len(permutation)):
     loss = model.get_loss(words[permutation[i]],device)
-    print(i,words[permutation[i]],loss.item(),time.time()-start_time)
-    print(model.generate(device))
+    #print(i,len(permutation),words[permutation[i]],loss.item(),time.time()-start_time)
+    #print(model.generate(device))
+    loss_mean += loss.item()
     loss.backward()
     optimizer.step()
     optimizer.zero_grad()
-    if(i%100 == 0):
+    if(i%1000 == 0):
         torch.save(model.to('cpu'),'wrdgen.pt')
         model.to(device)
+        print(f'finished {i}/{len(permutation)}, time taken = {time.time()-start_time},mean loss = {loss_mean/1000}',flush = True)
+        for i in range(20):
+            print('',model.generate(device),flush=True)
+        loss_mean = 0
