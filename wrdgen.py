@@ -31,14 +31,14 @@ class wrdgen(torch.nn.Module):
         super(wrdgen,self).__init__()
         self.alphabet = alphabet
         self.n_h = n_h
-        self.lstm = torch.nn.LSTM(input_size = len(alphabet),hidden_size = n_h,num_layers = 10)
+        self.lstm = torch.nn.LSTM(input_size = len(alphabet),hidden_size = n_h,num_layers = 5)
         self.linear = torch.nn.Sequential(
             torch.nn.Linear(n_h,n_h),torch.nn.Tanh(),
             torch.nn.Linear(n_h,n_h),torch.nn.Tanh(),
             torch.nn.Linear(n_h,len(alphabet))
         )
-        self.h0 = torch.nn.Parameter(torch.randn(10,1,n_h))
-        self.c0 = torch.nn.Parameter(torch.randn(10,1,n_h))
+        self.h0 = torch.nn.Parameter(torch.randn(5,1,n_h))
+        self.c0 = torch.nn.Parameter(torch.randn(5,1,n_h))
         self.criterion = torch.nn.CrossEntropyLoss()
         
     def generate(self,device):
@@ -71,27 +71,33 @@ class wrdgen(torch.nn.Module):
         h = self.linear(h)
         return self.criterion(h,y)
 
-model = wrdgen(alphabet,500).to(device)
+model = wrdgen(alphabet,500)
+#model.load_state_dict(torch.load('wrdgen.pt'))
+model.to(device)
 #print(model.generate())
 
-optimizer = torch.optim.Adam(model.parameters(),lr = 0.001)
+optimizer = torch.optim.Adam(model.parameters(),lr = 0.0001)
 
 permutation = np.random.permutation(len(words))
 
 start_time = time.time()
 loss_mean = 0
-for i in range(len(permutation)):
-    loss = model.get_loss(words[permutation[i]],device)
-    #print(i,len(permutation),words[permutation[i]],loss.item(),time.time()-start_time)
-    #print(model.generate(device))
-    loss_mean += loss.item()
-    loss.backward()
-    optimizer.step()
-    optimizer.zero_grad()
-    if(i%1000 == 0):
-        torch.save(model.to('cpu'),'wrdgen.pt')
-        model.to(device)
-        print(f'finished {i}/{len(permutation)}, time taken = {time.time()-start_time},mean loss = {loss_mean/1000}',flush = True)
-        for i in range(20):
-            print('',model.generate(device),flush=True)
-        loss_mean = 0
+count = 0
+for epoch in range(20):
+    for i in range(len(permutation)):
+        loss = model.get_loss(words[permutation[i]],device)
+        #print(i,len(permutation),words[permutation[i]],loss.item(),time.time()-start_time)
+        #print(model.generate(device))
+        loss_mean += loss.item()
+        count +=1
+        loss.backward()
+        optimizer.step()
+        optimizer.zero_grad()
+        if(i%1000 == 0 or i == len(permutation)-1):
+            torch.save(model.to('cpu').state_dict(),'wrdgen.pt')
+            model.to(device)
+            print(f'finished {i}/{len(permutation)} of epoch {epoch}, time taken = {time.time()-start_time},mean loss = {loss_mean/count}',flush = True)
+            for i in range(20):
+                print('',model.generate(device),flush=True)
+                loss_mean = 0
+                count = 0
